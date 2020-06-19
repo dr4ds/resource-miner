@@ -1,0 +1,12 @@
+[package]
+name = "crypto-block"
+version = "0.1.0"
+authors = ["root"]
+edition = "2018"
+
+[dependencies]
+hex="0.4.2"
+rand="0.7.3"
+num_cpus = "1.13.0"
+blake3="0.3.4"
+bigint="4.4.3"
