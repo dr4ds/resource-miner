@@ -13,6 +13,7 @@ const CHUNK_SIZE:u32 = 50000;
 
 type Nonce = u32;
 type ResourceTarget = [u8;32];
+type Args = HashMap<String,String>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum ResourceKind {
@@ -150,15 +151,43 @@ impl BlockManager{
     }
 }
 
+fn get_args() -> Args{
+    let mut args = Args::new();
+    let args_tmp:Vec<String> = std::env::args().collect();
+
+    for a in args_tmp {
+        if let Some(argument) = a.strip_prefix("-"){
+            let argument_value : Vec<String> = argument.splitn(2, "=").map(|s|s.to_owned()).collect();
+            if argument_value.len() != 2{
+                panic!("invalid argument: {}", argument);
+            }
+
+            args.insert(argument_value[0].clone(), argument_value[1].clone()); 
+        }
+
+    }
+
+    args
+}
 
 fn main(){
+    let args = get_args();
+
     let (tx, rx) = mpsc::channel();
 
     let block_manager = Arc::new(Mutex::new(BlockManager::new()));
     let resource_manager = ResourceMatcher::new();
-    let threads = num_cpus::get_physical();
+    let threads = if let Some(threads) = args.get("threads"){
+        threads.parse::<usize>().unwrap()
+    } else {
+        num_cpus::get_physical()
+    };
     let start = SystemTime::now();
     let mut handles = vec![];
+
+    println!("start: {:#?}", start.duration_since(SystemTime::UNIX_EPOCH).unwrap());
+    println!("threads: {}", threads);
+    println!("mining...");
 
     for _ in 0..threads {
         let bm = block_manager.clone();
@@ -215,5 +244,3 @@ fn main(){
         let _ = handle.join();
     }
 }
-// TODO: Save file
-// TODO: Config file
