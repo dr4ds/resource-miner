@@ -85,6 +85,10 @@ impl ResourceMatcher{
     }
 }
 
+fn get_time_ms() -> u128{
+    SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis()
+}
+
 #[derive(Debug,Clone)]
 struct Block {
     created_at:u128,
@@ -94,7 +98,7 @@ struct Block {
 impl Block{
     fn new() -> Self{
         Self {
-            created_at:SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis(),
+            created_at:get_time_ms(),
             seed:rand::thread_rng().gen::<[u8; 32]>(),
         }
     }
@@ -171,6 +175,8 @@ fn get_args() -> Args{
 }
 
 fn main(){
+    let mut save_file = std::fs::File::create("mined.txt").unwrap();
+
     let args = get_args();
 
     let (tx, rx) = mpsc::channel();
@@ -182,10 +188,9 @@ fn main(){
     } else {
         num_cpus::get_physical()
     };
-    let start = SystemTime::now();
     let mut handles = vec![];
 
-    println!("start: {:#?}", start.duration_since(SystemTime::UNIX_EPOCH).unwrap());
+    println!("start: {:#?}", get_time_ms());
     println!("threads: {}", threads);
     println!("mining...");
 
@@ -223,12 +228,14 @@ fn main(){
 
         loop {
             match rx.recv() {
-                Ok((resource, _))=>{
+                Ok((resource, hash))=>{
                     if let Some(v) = mined.get_mut(&resource.kind){
                         *v+=1;
                     } else {
-                        mined.insert(resource.kind, 1);
+                        mined.insert(resource.kind.clone(), 1);
                     }
+
+                    save_file.write_fmt(format_args!("{} {:?} {}\n",get_time_ms(), resource.kind, hash)).unwrap();
 
                     let bm = bm.lock().unwrap();
 
